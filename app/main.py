@@ -3,6 +3,8 @@ from typing import Hashable, Any
 from app.node import Node
 from copy import deepcopy
 
+TOMBSTONE = object()
+
 
 class Dictionary:
     initial_capacity = 8
@@ -23,7 +25,7 @@ class Dictionary:
             if node is None:
                 return index
 
-            if node.key == key:
+            if node.key == key and node is not TOMBSTONE:
                 return index
 
             index = (index + 1) % self.current_capacity
@@ -38,7 +40,7 @@ class Dictionary:
             node = self.nodes[index]
             if node is None:
                 raise KeyError(f"No such key as {key}")
-            if node.key == key:
+            if node.key == key and node is not TOMBSTONE:
                 return index
             index = (index + 1) % self.current_capacity
             if index == start_index:
@@ -49,11 +51,11 @@ class Dictionary:
             self.resize()
         slot = self.find_slot(key)
         node = self.nodes[slot]
-        if node is None:
+        if node is None or node is TOMBSTONE:
             self.size += 1
         self.nodes[slot] = Node(key, value)
 
-    def __getitem__(self, key: Hashable) -> Node:
+    def __getitem__(self, key: Hashable) -> Any:
         index = self.search_item(key)
         return self.nodes[index].value
 
@@ -62,10 +64,10 @@ class Dictionary:
 
     def __delitem__(self, key: Hashable) -> None:
         index = self.search_item(key)
-        self.nodes[index] = None
+        self.nodes[index] = TOMBSTONE
         self.size -= 1
 
-    def pop(self, key: Hashable, default: Any | None = None) -> Node:
+    def pop(self, key: Hashable, default: Any | None = None) -> Any:
         try:
             index = self.search_item(key)
         except KeyError:
@@ -74,7 +76,7 @@ class Dictionary:
             raise
 
         node = self.nodes[index]
-        self.nodes[index] = None
+        self.nodes[index] = TOMBSTONE
         self.size -= 1
         return node.value
 
@@ -84,8 +86,8 @@ class Dictionary:
         self.current_capacity = len(self.nodes)
         self.size = 0
         for node in nodes_copy:
-            if isinstance(node, Node):
-                self.__setitem__(node.key, node.value)
+            if isinstance(node, Node) and node is not TOMBSTONE:
+                self[node.key]  = node.value
 
     def clear(self) -> None:
         self.current_capacity = Dictionary.initial_capacity
@@ -93,7 +95,7 @@ class Dictionary:
         self.size = 0
 
     def is_reached_resize(self) -> bool:
-        return self.size == int(self.current_capacity * Dictionary.load_factor)
+        return self.size >= int(self.current_capacity * Dictionary.load_factor)
 
     def calculate_index(self, key: Hashable) -> int:
         return hash(key) % self.current_capacity
