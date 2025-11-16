@@ -19,14 +19,18 @@ class Dictionary:
 
         index = self.calculate_index(key)
         start_index = index
-
+        first_tombstone = None
         while True:
             node = self.nodes[index]
             if node is None:
+                return first_tombstone if first_tombstone else index
+
+            if node is not TOMBSTONE and node.key == key:
                 return index
 
-            if node.key == key and node is not TOMBSTONE:
-                return index
+            if node is TOMBSTONE:
+                if first_tombstone is None:
+                    first_tombstone = index
 
             index = (index + 1) % self.current_capacity
             if index == start_index:
@@ -40,7 +44,7 @@ class Dictionary:
             node = self.nodes[index]
             if node is None:
                 raise KeyError(f"No such key as {key}")
-            if node.key == key and node is not TOMBSTONE:
+            if node is not TOMBSTONE and node.key == key:
                 return index
             index = (index + 1) % self.current_capacity
             if index == start_index:
@@ -87,7 +91,7 @@ class Dictionary:
         self.size = 0
         for node in nodes_copy:
             if isinstance(node, Node) and node is not TOMBSTONE:
-                self[node.key]  = node.value
+                self[node.key] = node.value
 
     def clear(self) -> None:
         self.current_capacity = Dictionary.initial_capacity
